@@ -1,3 +1,6 @@
+# Programação retirada do blog do Pedro Albuquerque
+# Link para o post: http://pedrounb.blogspot.com.br/2015/09/credit-score-usando-o-r.html
+
 #Limpa o Workspace
 rm(list=ls())
 
