@@ -2,7 +2,7 @@ getwd()
 rm(list=ls())
 dev.off()
 gc()
-setwd("L:/# DIRUR #/ASMEQ/Acidentes de trânsito")
+setwd("home")
 
 # Base inicial
 acidentes <- readRDS("Dados Brutos/ano2007/acidentes07.rds") #2007
@@ -29,26 +29,7 @@ library(ggplot2)
 
 ## Primeira leitura #####
 
-# Acidentes 2007
-acidentes <-
-  read.table(file = "ano2007/2007-jan a jun.csv", header = T, sep = ";", 
-             quote = "", stringsAsFactors = F, encoding = "Latin1")
-
-
-temp <- 
-  read.table(file = "ano2007/2007-jul a dez.csv", header = T, sep = ";", 
-                   quote = "", stringsAsFactors = F, encoding = "Latin1")
-
-
-acidentes <- rbind(acidentes, temp)
-rm(temp)
-
-acidentes <- tbl_df(acidentes)
-## Salvando em outro arquivo
-# saveRDS(acidentes, "Dados Brutos/ano2007/acidentes07.rds")
-
 # Acidentes 2010
-
 diretorio = "Dados Brutos/ano2010/"
 readData <- function(arquivo){
   print(arquivo)
@@ -83,8 +64,6 @@ custo <- read.table('clipboard', header = T, sep = "\t",
 names(acidentes)
 glimpse(acidentes)
 
-# 2014
-
 acidentes <-
   acidentes %>%
   arrange(Código.Ocorrência) %>%
@@ -93,16 +72,6 @@ acidentes <-
          Tipo.Veículo, UF, Tipo.Envolvido,
          BR, Causa.Acidente) 
 
-# 2007 e 2010
-acidentes <-
-  acidentes %>%
-  arrange(Número.da.Ocorrência) %>%
-  select(Número.da.Ocorrência, Classificação.Acidente,
-         Qtd.Ferido.Leve, Qtd.Ferido.Grave, Qtd.Morto,
-         Tipo.do.Veículo, UF.Acidente, Descrição.Tipo.Envolvido,
-         BR.do.Acidente, Descrição.Causa.Acidente) 
-
-# 2014 VEM COM ILESO - 2007 E 2010 NÃO (apaga ileso e ctrl-z)
 names(acidentes) <- 
   c("ocorrencia","classificacao","feridoleve",
     "feridograve",'morto','ileso','veiculo','uf','desc_envolvido',
@@ -122,7 +91,7 @@ acidentes <-
            ifelse(classificacao %in% c('ignorado'),
                   'sem vitimas', classificacao))  
 
-### Preciso limpar os nomes de veiculo
+### Limpar os nomes de veiculo
 table(acidentes$veiculo)
 
 acidentes <- 
@@ -192,15 +161,9 @@ rm(temp)
 
 #### Virando a base de cabeça para baixo
 
-############# ##
-## IMPORTANTE ##
-############# ##
-# 2014 retira o mutate ileso
 custoaci <- 
 acidentes %>%
   mutate(veiculo = tolower(veiculo)) %>%
-#  mutate(ileso = 
-#           ifelse(feridoleve == 0 & feridograve == 0 & morto == 0, 1, 0)) %>%
   group_by(ocorrencia, classificacao, uf, br, causa, veiculo) %>%
   summarise(qtd = sum(envolvimento), #contar o numero de vezes que aparece o veiculo (com condutor)
             ileso = sum(ileso),
@@ -656,7 +619,3 @@ componentes_df %>%
   theme(plot.title = element_text(size=20, face="bold", hjust = 0)) +
   xlab('') +
   ylab('') 
-
-pie(as.matrix(componentes_df), labels = names(componentes_df))
-
-
