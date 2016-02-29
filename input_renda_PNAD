@@ -1,0 +1,297 @@
+# Série de pacotes a serem usados na rotina
+library(bit64)
+library(data.table)
+library(descr)
+library(survey)
+library(dplyr)
+library(broom)
+library(tidyr)
+
+getwd()
+rm(list = ls())
+gc()
+
+setwd("C:/Users/b2562360/Documents/Work/IVS/")
+
+# diretorio com base de dados em csv
+dir_dados <- "//Storage2/bases/NINSOC/Bases de dados/PNAD/CSV/"
+
+# Criar uma lista vazia pra salvar a leitura de cada ano da PNAD
+pnad_list <- list()
+for(ano in 2011:2014){
+  print(ano)
+  
+  dadosdom <- 
+    fread(input = paste0(dir_dados,'DOM',ano,'.csv'), sep = 'auto', 
+          sep2 = 'auto', integer64 = 'double',
+          select = c("DOMICILIOID","V0101", "UF","V0201","V4611", "V4617", "V4105",
+                     "UPA", "V0105", "V0216", "V0217", "V0213", "V0214", "V0218",
+                     "V0219", "V0225", "V0226", "V0227", "V0230", "V0228", "V0220",
+                     "V2020", "V0231", "V2032", "V0206", "V0232", "V4621", "V0207",
+                     "V0202", "V0205", "V2016", "V0203", "V0212"))
+  dadospes <- 
+    fread(input = paste0(dir_dados,'PES',ano,'.csv'), sep = 'auto', 
+          sep2 = 'auto', integer64 = 'double',
+          select = c("DOMICILIOID","UF", "V0404", "V0302", "V0401",
+                     "V4745", "V8005"))
+  banco = merge(dadosdom, dadospes, by = c("DOMICILIOID","UF"))
+  banco$ano = ano
+  rm(dadospes, dadosdom)
+  
+  id <- ano-2010
+  pnad_list[[id]] <- banco
+  rm(banco, id, ano)
+}
+# Criar um data.frame empilhando os arquivos da lista
+banco <- rbindlist(pnad_list)
+rm(pnad_list)
+
+# Verificando a leitura dos dados
+sapply(banco_domF, function(y) sum(is.na(y)))
+
+# Excluir pensionista, empregado doméstico e parentes do empregado
+# Excluir domicílios coletivos
+banco %>%
+  filter(V0401 %in% 1:5) %>%
+  filter(V0201 == 1) -> banco
+
+# Criando as dummies com as variáveis de domicilio
+banco %>%
+  mutate(banhoex = factor(ifelse(V0216 %in% 2, 1, 0))) %>%
+  mutate(urbano = factor(ifelse(banco$V4105 %in% 1:3, 1, 0))) %>%
+  mutate(esgadeq = factor(ifelse(V0217 %in% 1:3, 1, 0))) %>%
+  mutate(temagua = factor(ifelse(V0212 %in% 2 | V0214 %in% 2, 1, 0))) %>%
+  mutate(aguarede = factor(ifelse(V0212 %in% 2, 1, 0))) %>%
+  mutate(lixo = factor(ifelse(V0218 %in% 1:2, 1, 0))) %>%
+  mutate(eletrica = factor(ifelse(V0219 %in% 1, 1, 0))) %>%
+  mutate(radio = factor(ifelse(V0225 %in% 1, 1, 0))) %>%
+  mutate(tv = factor(ifelse(V0226 %in% 2 | V0227 %in% 1, 1, 0))) %>%
+  mutate(maqlav = factor(ifelse(V0230 %in% 2, 1, 0))) %>%
+  mutate(geladeira = factor(ifelse(V0228 %in% c(2,4), 1, 0))) %>%
+  mutate(fone = factor(ifelse(V0220 %in% 2 | V2020 %in% 2, 1, 0))) %>%
+  mutate(computador = factor(ifelse(V0231 %in% 1, 1, 0))) %>%           
+  mutate(carro = factor(ifelse(V2032 %in% c(2,6), 1, 0))) %>%
+  mutate(dens = factor(ifelse(V0105 / V0206 <= 2, 1, 0))) %>%
+  mutate(condicao = factor(ifelse(V0207 > 4, 6, V0207))) %>%
+  mutate(comodo = factor(ifelse(V0205 <= 2, 1, 
+                                ifelse(V0205 %in% 3:4, 2,
+                                       ifelse(V0205 %in% 5:6, 3, 4))))) %>%
+  mutate(banheiro = factor(ifelse(V0216 >= 2, 2, V0216))) %>%
+  mutate(fonefixo = factor(ifelse(V2020 %in% 2, 1, 0))) %>%
+  mutate(micro = factor(ifelse(V0232 %in% 2, 1, 0))) %>%
+  mutate(especie = factor(V0202)) %>%
+  mutate(parede = factor(ifelse(V0203 >= 3, 4, V0203))) -> banco
+
+# Variaveis do banco de pessoas
+banco %>%
+  mutate(indicam14 = factor(ifelse(V8005 < 14, 1, 0))) %>%
+  mutate(chefe = factor(ifelse(V0401 %in% 1, 1, 0))) %>%
+  mutate(cor = factor(ifelse(V0404 %in% 8, 6,
+                             ifelse(V0404 %in% c(0,6,9), 8, V0404)))) %>%
+  mutate(sexo = factor(ifelse(V0302 %in% 2, 1, 0))) %>%
+  mutate(inst = ifelse(V4745 %in% 1:2, 1,
+                       ifelse(V4745 %in% c(3,4,8), 2,
+                              ifelse(V4745 %in% 5:6, 3,
+                                     ifelse(V4745 %in% 7, 4, V4745))))) %>%
+  mutate(concluido  = (inst-1)/3) -> banco
+
+# Alterando nome das variáveis
+setnames(banco, "V4621", "rdpc")
+setnames(banco, "V0105", "npess")
+setnames(banco, "V4611", "peso")
+
+
+# Selecionar apenas as variaveis sendo usadas
+banco %>%
+  select(ano, rdpc, DOMICILIOID, npess, peso, UF, UPA, banhoex:concluido) -> banco
+
+# Verificando a criaçao das variáveis
+sapply(banco, function(y) sum(is.na(y)))
+# Variável Banheiro está gerando NA's ao invés de zeros
+banco %>%
+  mutate(banheiro = ifelse(is.na(banheiro), 0, banheiro)) -> banco
+banco$banheiro <- as.factor(banco$banheiro)
+
+# Somar as pessoas menores de 14 anos e filtrar para chefes de familia
+banco %>%
+  group_by(ano, DOMICILIOID) %>%
+  mutate(pesm14 = sum(indicam14 == 1)) %>%
+  filter(chefe == 1) %>%
+  ungroup() -> banco_dom
+
+rm(banco)
+
+# Dados do ano de 2011
+# banco_dom %>%
+#  filter(ano == 2011) -> dom11
+#
+# # Variáveis para o cluster
+# dom11_clust <- 
+#   dom11 %>%
+#   filter(rdpc == 0) %>%
+#   select(concluido, urbano, banhoex, esgadeq, temagua, aguarede, lixo,
+#          eletrica, radio, tv, maqlav, geladeira, fone, computador, carro, dens)
+# 
+# # model.matrix -> Converter fatores para númericos
+# # Gerando dois clusters - pobres e falsos pobres
+# clust11 <- kmeans(model.matrix(~.+0, data = dom11_clust), centers = 2); clust11
+# # Pelas médias dos cluster verificamos quais seriam os pobres e os falsos pobres
+# index <- order(clust11$cluster)
+
+# Importante guardar DOMICILIOID e ano como ids para o merge futuro
+setkey(banco_dom, DOMICILIOID, ano)
+
+dom_clust <- 
+  banco_dom %>%
+  filter(rdpc == 0) %>%
+  select(DOMICILIOID, ano, concluido, urbano, banhoex, esgadeq, temagua, aguarede, 
+         lixo, eletrica, radio, tv, maqlav, geladeira, fone, computador, carro,
+         dens)
+
+# model.matrix -> Converter fatores para númericos
+# Gerando dois clusters - pobres e falsos pobres
+clust <- 
+  kmeans(model.matrix(~.+0, data = select(dom_clust, -c(DOMICILIOID, ano))),
+                             centers = 2)
+
+# Identificando qual dos dois clusters são os falsos pobres
+clust$centers
+min(clust$centers[ ,'concluido']) == clust$centers[ ,'concluido']
+pobres <- which(min(clust$centers[ ,'concluido']) == clust$centers[ ,'concluido'])
+# Nova variavel com os falsos pobres
+clust$falsopobre <- ifelse(clust$cluster == pobres, 0, 1)
+
+# Salvando o ID para juntar os dois banco de dados corretamente
+index <- order(clust$cluster)
+dom_clust <- as.data.frame(dom_clust)
+dom_clust <- 
+  data.frame(dom_clust[index, c("DOMICILIOID", "ano")], 
+             falsopobre = clust$falsopobre[index])
+banco_dom <- 
+  full_join(banco_dom, dom_clust, by = c("DOMICILIOID", "ano"))
+rm(dom_clust)
+# A variável y assume valor 0 quando a rdpc é missing, e 1 caso contrário, 
+# Sera utilizada para a obtenção dos scores no modelo probit
+banco_dom %>%
+  mutate(rdpc = ifelse(falsopobre %in% 1, NA, rdpc)) %>%
+  mutate(y_probit = factor(ifelse(falsopobre %in% 1, 0, 1))) -> banco_dom
+
+prop.table(table(banco_dom$y_probit))
+prop.table(table(banco_dom$falsopobre))
+
+# Normalizar a variável peso
+banco_dom %>%
+  mutate(pesonorm = (peso-min(peso)) / (max(peso)-min(peso))) -> banco_dom
+
+# Não quero pesos igual a 0
+banco_dom %>%
+  mutate(pesonorm = ifelse(pesonorm == 0, 0.0001, pesonorm)) -> banco_dom
+
+# Rodar o modelo probit por ano - renda per capita deve ser comparativa ano a ano
+# Rodar por UF
+for(year in 2011:2014){
+  print(year)
+  banco_dom %>% 
+    filter(ano == year) %>%
+    group_by(UF) -> banco_domF
+  
+  
+  # myprobit <-
+  #   glm(I(y_probit == 0) ~ factor(inst) + condicao + parede + comodo + banheiro + micro +
+  #         carro + fonefixo + cor + especie + npess + pesm14,
+  #       weights = pesonorm, data = banco_dom11, subset = UF == 11,
+  #       family = binomial(link ="probit"))
+  # 
+  # summary(predict(myprobit,  newdata=banco_dom11, type ="response"))
+  
+  # Estimadores 
+#   banco_domF %>%
+#     group_by(UF) %>%
+#     do(tidy(glm(I(y_probit == 0) ~ factor(inst) + condicao + parede + comodo + banheiro + micro +
+#                   carro + fonefixo + cor + especie + npess + pesm14,
+#                 weights = pesonorm, data = .,
+#                 family = binomial(link ="probit")))) -> coeff_probit
+  
+  # Valores estimados pela analise
+  banco_domF %>%
+    group_by(UF) %>%
+    do(augment(glm(I(y_probit == 0) ~ factor(inst) + condicao + parede + 
+                     comodo + banheiro + micro + carro + fonefixo + cor +
+                     especie + npess + pesm14,
+                   weights = pesonorm, data = .,
+                   family = binomial(link ="probit")), 
+               type.predict = "response")) -> estim_probit
+
+
+  
+  # A função acima mantém a ordenaçao das variáveis
+  banco_domF$score <- estim_probit$.fitted
+  
+  # Criando uma nova id para mesclar com a bas futura de vizinhos
+  banco_domF %>%
+    ungroup() %>%
+    group_by(UPA) %>%
+    mutate(id = 1:n())  %>% 
+    arrange(UPA) -> banco_domF
+  
+  # UPA varia de 1 a 1100 - vizinhos proximos na mesma UPA
+  
+  vizinhos_list <- list()
+  
+  for(area in unique(banco_domF$UPA)) {
+    if(area %% 100 == 0) print(area)
+    
+    tryCatch(data.frame(knn.index(data = banco_domF %>%
+                                    filter(UPA == area) %>%
+                                    select(score),
+                                  k = 7), UPA = area),
+             error=function(e) data.frame(X1 = NA, X2 = NA, X3 = NA,
+                                          X4 = NA, X5 = NA, X6 = NA,
+                                          X7 = NA, UPA = area)) -> vizinhos
+    vizinhos$id <- 1:nrow(vizinhos)
+    
+    vizinhos_list[[area]] <- vizinhos
+    rm(area, vizinhos)
+  }
+  
+  vizinhos <- rbindlist(vizinhos_list)
+  rm(vizinhos_list)
+  
+  vizinhos %>%
+    gather(X, vizinho, X1:X7) %>%
+    mutate(count = as.numeric(substring(X, 2, 2))) %>%
+    select(-X)  %>% 
+    arrange(UPA, id, count) -> vizinhos
+  
+  vizinhos <- as.data.frame(vizinhos)
+  vizinhos <- tbl_df(vizinhos)
+  # Trazer variável de renda dos vizinhos
+  inner_join(vizinhos, banco_domF  %>%  select(UPA, id, rdpc), 
+             by = c("UPA", "vizinho" = "id")) -> vizinhos
+  # Trazer variável de renda dos id
+  inner_join(vizinhos, banco_domF  %>%  select(UPA, id, rdpc), 
+             by = c("UPA", "id")) -> vizinhos
+  names(vizinhos)[5:6] <- c("rdpc_vizinho", "rdpc")
+  
+  vizinhos %>%
+    filter(is.na(rdpc)) %>%
+    filter(!is.na(rdpc_vizinho) & rdpc_vizinho != 999999999999) %>%
+    select(-rdpc) -> vizinhos_pobres
+  
+  vizinhos_pobres %>%
+    ungroup() %>%
+    group_by(UPA, id) %>%
+    filter(count == min(count)) -> vizinhos_pobres
+  
+  full_join(banco_domF  %>% select(DOMICILIOID, id, UPA, rdpc, falsopobre), 
+            vizinhos_pobres  %>% select(-c(vizinho, count)), 
+            by = c("id", "UPA")) -> vizinhos_pobres
+  
+  vizinhos_pobres %>%
+    mutate(rdpc_input = ifelse(is.na(rdpc), rdpc_vizinho, rdpc))  %>% 
+    select(-c(rdpc, rdpc_vizinho))-> vizinhos_pobres
+  
+  write.csv(vizinhos_pobres, paste0("renda_inputada", year, ".csv"), 
+            row.names = F)
+  
+}
