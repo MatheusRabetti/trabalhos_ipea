@@ -94,7 +94,7 @@ IF A AND B;
 BY SETORC;
 
 
-************************ AGREGAÇÃO PARA UDH_IBGE_2010 ************************;
+************************ AGREGAÃ‡ÃƒO PARA UDH_IBGE_2010 ************************;
 
  PROC SORT DATA=FINAL;
  BY UDH_IBGE10;
@@ -198,7 +198,7 @@ RUN;
 
 
 
-************************ AGREGAÇÃO PARA Cod_Regionais_2010 ************************;
+************************ AGREGAÃ‡ÃƒO PARA Cod_Regionais_2010 ************************;
 
  PROC SORT DATA=FINAL;
  BY Cod_Reg10;
@@ -305,7 +305,7 @@ RUN;
 
 
 
-************************ AGREGAÇÃO PARA Cod_Mun_2010 ************************;
+************************ AGREGAÃ‡ÃƒO PARA Cod_Mun_2010 ************************;
 
  PROC SORT DATA=FINAL;
  BY Mun10;
@@ -410,7 +410,7 @@ RUN;
 
 
 
-************************ AGREGAÇÃO PARA Cod_RM_2010 ************************;
+************************ AGREGAÃ‡ÃƒO PARA Cod_RM_2010 ************************;
 
  PROC SORT DATA=FINAL;
  BY Cod_RM10;
