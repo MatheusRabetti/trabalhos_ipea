@@ -420,7 +420,7 @@ VAR PIA PIA1014 PIA1517 PIA1824 PIA2529 PIA18M OCUP OCUP1014 OCUP1517 OCUP1824 O
 
 
 
-************************ AGREGA«√O PARA MUN10 ************************;
+************************ AGREGA√á√ÉO PARA MUN10 ************************;
 
  PROC SORT DATA=FINAL;
  BY MUN10;
