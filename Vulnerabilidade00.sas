@@ -279,7 +279,7 @@ ELSE                                   FUNDIN_TODOS_MMEIO=0;
 
 
 
-*********** CRIANÇAS ***********;
+*********** CRIANÃ‡AS ***********;
 
 IF (FUNDIN_TODOS=1 AND V4752<15) THEN CRIFUNDIN_TODOS=1;
 ELSE                                  CRIFUNDIN_TODOS=0;
