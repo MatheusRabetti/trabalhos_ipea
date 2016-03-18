@@ -33,7 +33,7 @@ SET IBGE;
 PESOPES=P001;
 
 
-********* tirando empregada doméstica e pensionista etc **********;
+********* tirando empregada domÃ©stica e pensionista etc **********;
 IF V0402<=08;
 
 ****** selecionando os dom particulares permanentes ****;
@@ -294,7 +294,7 @@ END;
 
 
 
-*************CALCULANDO OS OCUPADOS POR POSIÇÃO NA OCUPAÇÃO ***************;
+*************CALCULANDO OS OCUPADOS POR POSIÃ‡ÃƒO NA OCUPAÃ‡ÃƒO ***************;
 
 IF (V0447=1 OR V0447=3) THEN TRABCC=1;
 ELSE                         TRABCC=0;
@@ -359,12 +359,12 @@ IF (V4462=50020 OR (53111<=V4462<=53113) OR (55010<=V4462<=95000))  THEN  SERV=1
 ELSE                                                                      SERV=0;
 
 
-*************CALCULANDO O RENDIMENTO MÉDIO DOS OCUPADOS***********;
+*************CALCULANDO O RENDIMENTO MÃ‰DIO DOS OCUPADOS***********;
 
 RENOCUP=V4525*1.95209;
 
 
-*************CALCULANDO O % DOS OCUPADOS POR FAIXA DE RENDIMENTO EM SAL MÍNIMOS***********;
+*************CALCULANDO O % DOS OCUPADOS POR FAIXA DE RENDIMENTO EM SAL MÃNIMOS***********;
 
 IF (RENOCUP=0)       THEN REN0=1;
 IF ((RENOCUP/510)<1) THEN REN1=1;
