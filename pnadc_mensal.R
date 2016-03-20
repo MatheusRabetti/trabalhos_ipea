@@ -1,18 +1,36 @@
-
-
 library(readxl)
-
+library(downloader)	
+library(RCurl)	
+library(dplyr)
 
 rm(list = ls())
 gc()
 
-
 setwd('C:/Users/b2562360/Desktop/')
 
-planilhas <- excel_sheets("pnadc_201512_mensal.xls")
+
+# iniciar o link do respositorio do IBGE da PNAD Contínua
+tabelas_path <- "ftp://ftp.ibge.gov.br/Trabalho_e_Rendimento/Pesquisa_Nacional_por_Amostra_de_Domicilios_continua/Mensal/Tabelas/"
+
+# Ler as informações da pasta
+tabelas <- readLines(textConnection(getURL(tabelas_path)))
+
+# selecionar as tabelas disponíveis
+tabelas <- gsub("(.*)(pnadc_[0-9]{6})", "\\2", tabelas)
+
+# selecionar a tabela mais recente
+tabelas <- tabelas[tabelas != ""]
+tabela_att <- tabelas[length(tabelas)]
+
+# Download da planilha mensal mais recente
+tab_link <- paste0(tabelas_path, tabela_att)
+download.file(tab_link, destfile = tabela_att)
+
+# lendo a planilha baixada
+planilhas <- excel_sheets(tabela_att)
 
 # Lendo a planilha sumario
-sumario <- read_excel("pnadc_201512_mensal.xls", "Sumário", skip = 8)
+sumario <- read_excel(tabela_att, "Sumário", skip = 8)
 names(sumario) <- c("del", "parte1", "indice", "descricao")
 sumario <- select(sumario, -del)
 sumario <- na.omit(sumario)
@@ -37,7 +55,6 @@ last_year <- max(as.numeric(populacao$ano), na.rm = T)
 populacao <- populacao[1:last_line, ]
 # Gerando os anos
 populacao$ano <- c(rep(2012, 10), rep(2013:last_year, 12))
-
 
 populacao$mes <-
   gsub("[a-z]{3}-[a-z]{3}-([a-z]{3})", "\\1", populacao$mes)
