@@ -1,6 +1,6 @@
 # Autor: Matheus Rabetti
 # Ultima Att: 30/03/2016
-# Versao: 1.0
+# Versao: 2.0
 
 
 # PRIMEIROS PASSOS --------------------------------------------------------
@@ -12,6 +12,16 @@ setwd("C:/Users/b2562360/Documents/Work/")
 
 agric <- read.csv("eustaquio.csv", sep = ";", header = T, dec = ",", 
                   colClasses = rep("numeric", 4))
+
+# Correcao dos 0's
+agric$Milho[6] <- .0001
+agric$Algodao[2] <- .0001
+
+data.frame(
+  Milho = c(.25,.26,.34,.40,.47,.52,.61,.73,.80,.85,.86,.88,.88,.90),
+  Algodao = c(.61,.69,.71,.73,.76,.79,.83,.87,.86,.88,.93,.9,.94,.9),
+  Soja = c(.54,.68,.75,.81,.85,.87,.89,.91,.92,.91,.93,.94,.93,.93),
+  Ano = 2000:2013) -> agric_EUA
 
 
 # COMANDOS ----------------------------------------------------------------
@@ -46,6 +56,84 @@ as.lm.nls <- function(object, ...) {
   
 }
 
+linear <- function(data, item){
+  
+  data <- subset(data, subset = !is.na(get(item)))
+  
+  # Exponencial
+  
+  t <- 1:nrow(data)
+  linear_exp <- lm(as.formula(paste0("log(1/(1-",item,")) ~ t + 0")),
+                              data = data)
+  summary(linear_exp)
+  coef(linear_exp)
+    
+  # Regressao linear logistica
+  linear_log <- lm(as.formula(paste0("I(log(",item,"/(1-",item,"))) ~ t")),
+                   data = data)
+  summary(linear_log)
+  coef(linear_log)
+  
+  return(list(resumo_exp = summary(linear_exp),
+              resumo_log = summary(linear_log)))
+  
+}
+
+non_linear <- function(dados, item, plot = F, tipo){
+  
+  dados <- subset(dados, subset = !is.na(get(item)))
+  
+  t <- 1:nrow(dados)
+  x <- t
+  
+  # EXP
+  linear_exp <- lm(as.formula(paste0("log(1/(1-",item,")) ~ t + 0")),
+                   data = dados)
+  
+  f_exp <- function(x, a) {1 - exp(-a*x)}
+  fm_exp <- nls(as.formula(paste0(item," ~ f_exp(x, a)")), 
+                data = dados, 
+                start = c(a = as.numeric(coef(linear_exp))))
+  
+  assign("fm_exp", fm_exp, envir = globalenv())
+  
+  # LOG
+  linear_log <- lm(as.formula(paste0("I(log(",item,"/(1-",item,"))) ~ t")),
+                   data = dados)
+  
+  f_log <- function(x, b, k) {(1 + exp(-b*x - k) )^(-1)}
+  fm_log <- nls(as.formula(paste0(item," ~ f_log(x, b, k)")),
+                data = dados, 
+                start = list(b = as.numeric(coef(linear_log)[2]),
+                             k = as.numeric(coef(linear_log)[1])))
+  
+  assign("fm_log", fm_log, envir = globalenv())
+  
+  if(plot == T){
+    resultsC <- data.frame(predict(as.lm.nls(fm_log), interval = "confidence"))
+    resultsP <- data.frame(predict(as.lm.nls(fm_log), interval = "prediction"))
+    
+    
+    with(dados, plot((100*Soja)~Ano, type="n", 
+                     ylim = c(-20, 120), yaxt = "n",
+                     ylab = "Adoção (%)"))
+    axis(2, at = seq(0, 100, by = 20), las=2)
+    title(main = item)
+    # add fill
+    polygon(c(dados$Ano, rev(dados$Ano)),
+            c(100*resultsP$lwr, 100*rev(resultsP$upr)),
+            col = "#D8EDFF", border = FALSE)
+    polygon(c(dados$Ano, rev(dados$Ano)),
+            c(100*resultsC$lwr, 100*rev(resultsC$upr)),
+            col = "#A1C7D6", border = FALSE)
+    
+    with(dados, points((100*get(item))~Ano, col = "blue"))
+    lines(dados$Ano, 100*predict(fm_log))
+  }
+  
+  return(list(resumo_exp = fm_exp,
+              resumo_log = fm_log))
+}
 
 
 # SIMULACAO ---------------------------------------------------------------
@@ -110,7 +198,6 @@ text(17, 10, expression(beta[4] == 0.1), cex = .8)
 
 legend(-0.5, 100, c(1:4), title = "Regiões",
        lty = c(1, 2, 3, 6))
-
 
 # LINEAR ------------------------------------------------------------------
 
@@ -240,3 +327,27 @@ polygon(c(agric$Ano, rev(agric$Ano)),
 
 with(agric, points((100*Soja)~Ano, col = "blue"))
 lines(agric$Ano, 100*predict(fm))
+
+# GERAR OUTPUTS ------------------------------------------------------------
+
+# Itens:
+# "Algodao" , "Milho" , "Soja"
+# Bases:
+# agric , agric_EUA
+
+linear(agric_EUA, "Soja")
+
+result <- non_linear(agric_EUA, "Soja")
+summary(result$resumo_exp)
+summary(as.lm.nls(result$resumo_exp))$r.squared
+summary(result$resumo_log)
+summary(as.lm.nls(result$resumo_log))$r.squared
+
+non_linear(agric_EUA, "Soja", plot = T)
+
+
+
+
+
+
+
